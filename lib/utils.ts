@@ -40,6 +40,9 @@ export function categoryConfig(category: FindingCategory) {
     ai_search:  { label: 'AI Search',    icon: 'Sparkles' },
     pages:      { label: 'Pages',        icon: 'FileText' },
     indexation: { label: 'Indexation',   icon: 'SearchX' },
+    technical:  { label: 'Technique',    icon: 'Settings' },
+    content:    { label: 'Contenu',      icon: 'FileText' },
+    commerce:   { label: 'Commerce',     icon: 'ShoppingBag' },
   }
   return map[category]
 }

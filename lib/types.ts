@@ -1,9 +1,76 @@
-export type FindingCategory = 'visibility' | 'serp' | 'ai_search' | 'pages' | 'indexation'
+export type FindingCategory = 'visibility' | 'serp' | 'ai_search' | 'pages' | 'indexation' | 'technical' | 'content' | 'commerce'
 export type FindingSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info'
 export type OpportunityType = 'refresh_content' | 'build_content' | 'reinforce_authority' | 'defend_competitor' | 'fix_technical' | 'expand_coverage' | 'strengthen_ai'
 export type InitiativeType = 'quick_win' | 'core_fix' | 'strategic' | 'experiment'
 export type RoadmapHorizon = 'backlog' | 'now' | 'next' | 'later'
 export type RoadmapStatus = 'todo' | 'in_progress' | 'done' | 'blocked'
+
+// ── Asset — pivot object linking findings, initiatives & module runs ──────
+export type AssetType = 'page' | 'query' | 'topic' | 'product' | 'feed' | 'section' | 'domain'
+
+export interface Asset {
+  id: string
+  site_id: string
+  type: AssetType
+  url?: string
+  title?: string
+  query?: string
+  topic?: string
+  parent_id?: string
+  created_at: string
+  updated_at: string
+}
+
+// ── ModuleRun — execution log for each connector/engine ───────────────────
+export type ConnectorType =
+  | 'gsc'
+  | 'bright_data'
+  | 'crawler'
+  | 'merchant_center'
+  | 'semantic_engine'
+  | 'geo_questions'
+  | 'robots_checker'
+  | 'content_writer'
+  | 'manual'
+
+export type ModuleRunStatus = 'running' | 'done' | 'failed' | 'partial'
+
+export interface ModuleRun {
+  id: string
+  site_id: string
+  connector: ConnectorType
+  status: ModuleRunStatus
+  findings_generated: number
+  assets_covered: number
+  started_at: string
+  completed_at?: string
+  error_message?: string
+}
+
+// ── Action — executable task produced by an initiative ────────────────────
+export type ActionType =
+  | 'content_brief'
+  | 'content_draft'
+  | 'technical_fix'
+  | 'feed_correction'
+  | 'internal_link'
+  | 'geo_test'
+  | 'robots_fix'
+  | 'schema_markup'
+
+export interface Action {
+  id: string
+  initiative_id: string
+  site_id: string
+  type: ActionType
+  title: string
+  description?: string
+  asset_id?: string
+  status: 'todo' | 'in_progress' | 'done'
+  owner?: string
+  due_date?: string
+  created_at: string
+}
 
 export interface Workspace {
   id: string
@@ -33,12 +100,13 @@ export interface Competitor {
 export interface Finding {
   id: string
   site_id: string
+  asset_id?: string
   category: FindingCategory
   severity: FindingSeverity
   title: string
   description: string
   asset_url?: string
-  asset_type?: 'query' | 'page' | 'topic' | 'domain'
+  asset_type?: AssetType
   metric_value?: number
   metric_label?: string
   metric_delta?: number
