@@ -1,0 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..800,20..100,0..1&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: #f7f1e7;
+  --paper-deep: #eee4d3;
+  --paper-cream: #fff8ea;
+  --ink: #2c2924;
+  --petrol: #526a68;
+  --petrol-deep: #334848;
+  --petrol-light: #dce8e5;
+  --tweed: #8b7a64;
+  --tweed-deep: #675848;
+  --copper: #c2915d;
+  --copper-light: #f0dfc8;
+  --sand: #d7bd91;
+  --wash: #dce8e5;
+  --line: rgba(112, 91, 70, 0.18);
+  --shadow: rgba(67, 55, 43, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: 'Fraunces', Georgia, serif;
+}
+
+@layer components {
+  .card {
+    @apply bg-paper-cream border border-line rounded-lg shadow-card;
+  }
+
+  .card-hover {
+    @apply card transition-shadow duration-200 hover:shadow-card-hover;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-petrol text-paper-cream font-semibold rounded-lg 
+           transition-colors duration-150 hover:bg-petrol-deep;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2 bg-paper border border-line text-ink font-medium rounded-lg 
+           transition-colors duration-150 hover:bg-paper-deep;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-3 py-2 text-tweed font-medium rounded-lg 
+           transition-colors duration-150 hover:bg-paper-deep hover:text-ink;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full border;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-tweed 
+           transition-all duration-150 hover:bg-paper-deep hover:text-ink;
+  }
+
+  .nav-link-active {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium 
+           bg-petrol-light text-petrol-deep border border-wash;
+  }
+
+  .kpi-card {
+    @apply card p-5 space-y-1;
+  }
+
+  .section-title {
+    @apply text-2xl font-display font-semibold text-petrol-deep tracking-tight;
+  }
+
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-widest text-copper;
+  }
+
+  .table-row {
+    @apply flex items-start gap-4 px-4 py-3.5 border-b border-line last:border-0 
+           hover:bg-paper-deep transition-colors duration-100;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--paper-deep);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--sand);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--tweed);
+}
+
+/* Recharts tooltips */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: var(--paper-cream) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px var(--shadow) !important;
+}
