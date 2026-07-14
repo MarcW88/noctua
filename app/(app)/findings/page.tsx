@@ -1,199 +1,266 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, Globe, Sparkles, FileText, SearchX, TrendingDown, ChevronRight, LinkIcon, X } from 'lucide-react'
+import {
+  AlertTriangle, Globe, Sparkles, FileText, SearchX, TrendingDown,
+  ChevronRight, ArrowRight, X, Lightbulb, MapPin, Play, CheckCircle2
+} from 'lucide-react'
 import { mockFindings } from '@/lib/mock-data'
 import { severityConfig, categoryConfig } from '@/lib/utils'
 import type { Finding, FindingCategory } from '@/lib/types'
 
-const tabs: { id: FindingCategory; label: string; icon: React.ElementType }[] = [
-  { id: 'visibility', label: 'Visibilité', icon: TrendingDown },
-  { id: 'serp', label: 'SERP', icon: Globe },
-  { id: 'ai_search', label: 'AI Search', icon: Sparkles },
-  { id: 'pages', label: 'Pages', icon: FileText },
-  { id: 'indexation', label: 'Indexation', icon: SearchX },
+// Pipeline stages
+const STAGES: { id: string; label: string; sublabel: string; color: string; bg: string; border: string }[] = [
+  { id: 'detected',  label: 'Détecté',   sublabel: 'Findings ouverts',       color: 'text-red-700',    bg: 'bg-red-50',      border: 'border-t-red-400' },
+  { id: 'suggested', label: 'Suggéré',   sublabel: 'Initiative proposée',    color: 'text-amber-700',  bg: 'bg-amber-50',    border: 'border-t-amber-400' },
+  { id: 'planned',   label: 'Planifié',  sublabel: 'Dans la roadmap',        color: 'text-petrol-deep', bg: 'bg-petrol-light', border: 'border-t-petrol' },
+  { id: 'active',    label: 'En cours',  sublabel: 'Initiative active',      color: 'text-copper',     bg: 'bg-copper-light', border: 'border-t-copper' },
+  { id: 'resolved',  label: 'Résolu',    sublabel: 'Impact mesuré',          color: 'text-emerald-700', bg: 'bg-emerald-50',  border: 'border-t-emerald-500' },
 ]
 
-function FindingRow({ finding, onSelect }: { finding: Finding; onSelect: (f: Finding) => void }) {
+// Assign mock findings to stages (based on their finding IDs linked to opportunities/initiatives)
+function getStage(finding: Finding): string {
+  if (finding.is_dismissed) return 'resolved'
+  if (['f10', 'f11'].includes(finding.id)) return 'active'    // linked to in-progress initiative
+  if (['f2', 'f9', 'f8', 'f1'].includes(finding.id)) return 'planned'
+  if (['f6', 'f7', 'f4', 'f5'].includes(finding.id)) return 'suggested'
+  return 'detected'
+}
+
+const CATEGORY_TABS: { id: FindingCategory | 'all'; label: string }[] = [
+  { id: 'all', label: 'Tous' },
+  { id: 'visibility', label: 'Visibilité' },
+  { id: 'serp', label: 'SERP' },
+  { id: 'ai_search', label: 'AI Search' },
+  { id: 'pages', label: 'Pages' },
+  { id: 'indexation', label: 'Indexation' },
+]
+
+// ── Finding card (compact, used in pipeline columns) ───────────────────
+
+function FindingCard({ finding, onSelect, isSelected }: {
+  finding: Finding; onSelect: (f: Finding | null) => void; isSelected: boolean
+}) {
   const sev = severityConfig(finding.severity)
+  const cat = categoryConfig(finding.category)
   return (
-    <div
-      className="px-5 py-4 flex items-start gap-4 border-b hover:bg-paper-deep cursor-pointer transition-colors"
-      style={{ borderColor: 'var(--line)' }}
-      onClick={() => onSelect(finding)}
+    <button
+      onClick={() => onSelect(isSelected ? null : finding)}
+      className={`w-full text-left p-3 rounded-lg border transition-all ${
+        isSelected
+          ? 'bg-white border-copper shadow-card'
+          : 'bg-white/60 border-line hover:bg-white hover:shadow-subtle'
+      }`}
     >
-      <span className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${sev.dot}`} />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold leading-snug mb-1" style={{ color: 'var(--ink)' }}>
-          {finding.title}
-        </p>
-        <p className="text-xs leading-relaxed line-clamp-2" style={{ color: 'var(--tweed)' }}>
-          {finding.description}
-        </p>
-        {finding.asset_url && (
-          <div className="flex items-center gap-1 mt-1.5">
-            <LinkIcon size={10} style={{ color: 'var(--petrol)' }} />
-            <span className="text-xs font-mono" style={{ color: 'var(--petrol)' }}>{finding.asset_url}</span>
-          </div>
-        )}
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${sev.bg} ${sev.color}`}>
+          {sev.label}
+        </span>
+        <span className="text-[10px] text-tweed shrink-0">{cat.label}</span>
       </div>
-      <div className="flex flex-col items-end gap-2 flex-shrink-0">
-        <span className={`badge ${sev.bg} ${sev.color}`}>{sev.label}</span>
-        {finding.metric_value !== undefined && finding.metric_label && (
-          <span className="text-xs font-bold" style={{ color: finding.metric_value < 0 ? '#dc2626' : 'var(--petrol)' }}>
-            {finding.metric_value > 0 ? '+' : ''}{finding.metric_value} {finding.metric_label}
-          </span>
-        )}
-        <ChevronRight size={14} style={{ color: 'var(--tweed)' }} />
-      </div>
-    </div>
+      <p className="text-xs font-medium text-ink leading-snug line-clamp-2">{finding.title}</p>
+      {finding.metric_value !== undefined && finding.metric_label && (
+        <p className={`text-xs font-bold mt-1 ${finding.metric_value < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+          {finding.metric_value > 0 ? '+' : ''}{finding.metric_value} {finding.metric_label}
+        </p>
+      )}
+    </button>
   )
 }
 
-function FindingPanel({ finding, onClose }: { finding: Finding; onClose: () => void }) {
+// ── Detail panel ─────────────────────────────────────────────────────────
+
+function DetailPanel({ finding, onClose }: { finding: Finding; onClose: () => void }) {
   const sev = severityConfig(finding.severity)
   const cat = categoryConfig(finding.category)
+  const stage = getStage(finding)
+  const stageConf = STAGES.find(s => s.id === stage)!
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[480px] border-l shadow-card-hover z-40 flex flex-col overflow-y-auto"
-      style={{ background: 'var(--paper-cream)', borderColor: 'var(--line)' }}>
-      <div className="px-6 py-5 border-b flex items-start justify-between" style={{ borderColor: 'var(--line)' }}>
-        <div>
-          <p className="eyebrow mb-1">{cat.label}</p>
-          <span className={`badge ${sev.bg} ${sev.color}`}>{sev.label}</span>
+    <div className="w-[380px] shrink-0 border-l border-line flex flex-col overflow-y-auto" style={{ background: 'var(--paper-cream)' }}>
+      <div className="p-5 border-b border-line">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className={`text-[11px] px-2 py-0.5 rounded border font-semibold ${sev.bg} ${sev.color}`}>{sev.label}</span>
+              <span className="text-[11px] text-tweed">{cat.label}</span>
+              <span className={`text-[11px] px-2 py-0.5 rounded font-medium ${stageConf.color} ${stageConf.bg}`}>{stageConf.label}</span>
+            </div>
+            <h2 className="font-display text-base font-semibold text-ink leading-snug">{finding.title}</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-paper-deep text-tweed hover:text-ink transition-colors shrink-0">
+            <X size={15} />
+          </button>
         </div>
-        <button onClick={onClose} className="p-1 rounded hover:bg-paper-deep">
-          <X size={18} style={{ color: 'var(--tweed)' }} />
-        </button>
       </div>
-      <div className="px-6 py-5 space-y-5 flex-1">
-        <h2 className="font-display text-xl font-bold leading-snug" style={{ color: 'var(--petrol-deep)' }}>
-          {finding.title}
-        </h2>
-        <p className="text-sm leading-relaxed" style={{ color: 'var(--tweed)' }}>
-          {finding.description}
-        </p>
+
+      <div className="flex-1 p-5 space-y-5 overflow-y-auto">
+        <div>
+          <p className="text-[10px] font-semibold text-tweed uppercase tracking-wider mb-1.5">Description</p>
+          <p className="text-sm text-ink/80 leading-relaxed">{finding.description}</p>
+        </div>
+
         {finding.asset_url && (
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: 'var(--tweed)' }}>Asset concerné</p>
-            <span className="text-sm font-mono px-2 py-1 rounded" style={{ background: 'var(--paper-deep)', color: 'var(--petrol)' }}>
-              {finding.asset_url}
-            </span>
+            <p className="text-[10px] font-semibold text-tweed uppercase tracking-wider mb-1.5">Asset</p>
+            <span className="text-xs font-mono px-2 py-1 rounded bg-paper-deep text-petrol">{finding.asset_url}</span>
           </div>
         )}
+
         {finding.evidence && finding.evidence.length > 0 && (
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--tweed)' }}>Preuves</p>
-            <div className="space-y-2">
+            <p className="text-[10px] font-semibold text-tweed uppercase tracking-wider mb-2">Preuves</p>
+            <div className="space-y-1.5">
               {finding.evidence.map(ev => (
-                <div key={ev.id} className="flex items-center justify-between px-3 py-2 rounded-lg"
-                  style={{ background: 'var(--paper-deep)', border: '1px solid var(--line)' }}>
-                  <span className="text-xs font-medium" style={{ color: 'var(--tweed)' }}>{ev.label}</span>
-                  <span className="text-xs font-bold" style={{ color: 'var(--ink)' }}>{ev.value}</span>
+                <div key={ev.id} className="flex justify-between items-center px-3 py-2 rounded-lg bg-paper-deep border border-line">
+                  <span className="text-xs text-tweed">{ev.label}</span>
+                  <span className="text-xs font-bold text-ink">{ev.value}</span>
                 </div>
               ))}
             </div>
           </div>
         )}
-        <div className="pt-4 border-t" style={{ borderColor: 'var(--line)' }}>
-          <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--tweed)' }}>
-            Action recommandée
-          </p>
-          <button
-            className="btn-primary w-full justify-center text-sm"
-          >
-            Créer une opportunité →
-          </button>
-          <button
-            className="btn-secondary w-full justify-center text-sm mt-2"
-          >
-            Ignorer ce finding
-          </button>
+
+        <div>
+          <p className="text-[10px] font-semibold text-tweed uppercase tracking-wider mb-2">Pipeline</p>
+          <div className="flex items-center gap-1">
+            {STAGES.map((s, i) => (
+              <div key={s.id} className="flex items-center gap-1">
+                <span className={`text-[10px] px-2 py-1 rounded font-medium ${s.id === stage ? `${s.color} ${s.bg}` : 'text-tweed/50 bg-paper-deep'}`}>
+                  {s.label}
+                </span>
+                {i < STAGES.length - 1 && <ArrowRight size={10} className="text-tweed/30 shrink-0" />}
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
+
+      <div className="p-5 border-t border-line space-y-2">
+        <button className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium" style={{ background: 'var(--ink)', color: 'var(--paper)' }}>
+          <Lightbulb size={14} />
+          Créer une opportunité
+        </button>
+        <button className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium text-tweed border border-line hover:bg-paper-deep transition-colors">
+          Ignorer ce finding
+        </button>
       </div>
     </div>
   )
 }
 
-export default function FindingsPage() {
-  const [activeTab, setActiveTab] = useState<FindingCategory>('visibility')
-  const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null)
+// ── Page ─────────────────────────────────────────────────────────────────────
 
-  const filtered = mockFindings.filter(f => f.category === activeTab && !f.is_dismissed)
-  const countByCategory = (cat: FindingCategory) => mockFindings.filter(f => f.category === cat && !f.is_dismissed).length
+export default function FindingsPage() {
+  const [categoryFilter, setCategoryFilter] = useState<FindingCategory | 'all'>('all')
+  const [selected, setSelected] = useState<Finding | null>(null)
+
+  const filtered = categoryFilter === 'all'
+    ? mockFindings
+    : mockFindings.filter(f => f.category === categoryFilter)
+
+  const activeCount = mockFindings.filter(f => !f.is_dismissed).length
+  const criticalCount = mockFindings.filter(f => f.severity === 'critical').length
 
   return (
-    <div className="flex min-h-screen relative">
-      <div className={`flex-1 p-8 transition-all ${selectedFinding ? 'mr-[480px]' : ''}`}>
-        <div className="mb-6">
-          <p className="eyebrow mb-1">Analyse</p>
-          <h1 className="font-display text-3xl font-bold tracking-tight" style={{ color: 'var(--petrol-deep)' }}>
-            Findings
-          </h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--tweed)' }}>
-            {mockFindings.filter(f => !f.is_dismissed).length} findings actifs · Détection automatique GSC + SERP + URL Inspection
-          </p>
-        </div>
-
-        <div className="flex gap-1 mb-6 border-b" style={{ borderColor: 'var(--line)' }}>
-          {tabs.map(tab => {
-            const Icon = tab.icon
-            const count = countByCategory(tab.id)
-            const isActive = activeTab === tab.id
-            return (
+    <div className="flex flex-col h-screen overflow-hidden" style={{ background: 'var(--paper)' }}>
+      {/* Header */}
+      <div className="shrink-0 border-b border-line px-8 pt-6 pb-4" style={{ background: 'var(--paper-cream)' }}>
+        <div className="flex items-end justify-between mb-4">
+          <div>
+            <p className="text-[11px] font-semibold text-tweed uppercase tracking-widest mb-0.5">Pipeline d'analyse</p>
+            <h1 className="font-display text-2xl font-bold text-ink">Findings</h1>
+            <p className="text-xs text-tweed mt-1">
+              <span className="font-semibold text-red-600">{criticalCount} critiques</span>
+              {' · '}{activeCount} actifs · Détection GSC + SERP + URL Inspection
+            </p>
+          </div>
+          {/* Category filter pills */}
+          <div className="flex gap-1.5 flex-wrap justify-end">
+            {CATEGORY_TABS.map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px"
-                style={{
-                  borderColor: isActive ? 'var(--petrol)' : 'transparent',
-                  color: isActive ? 'var(--petrol-deep)' : 'var(--tweed)',
-                }}
+                onClick={() => setCategoryFilter(tab.id)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all border ${
+                  categoryFilter === tab.id
+                    ? 'bg-ink text-paper border-ink'
+                    : 'bg-white text-tweed border-line hover:border-tweed/50 hover:text-ink'
+                }`}
               >
-                <Icon size={14} />
                 {tab.label}
-                <span
-                  className="text-xs font-bold px-1.5 py-0.5 rounded-full"
-                  style={{
-                    background: isActive ? 'var(--petrol)' : 'var(--copper-light)',
-                    color: isActive ? 'var(--paper-cream)' : 'var(--copper)',
-                  }}
-                >
-                  {count}
-                </span>
+                {tab.id !== 'all' && (
+                  <span className="ml-1.5 opacity-60">
+                    {mockFindings.filter(f => f.category === tab.id).length}
+                  </span>
+                )}
               </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Pipeline stage counters */}
+        <div className="flex gap-2">
+          {STAGES.map((stage, i) => {
+            const count = filtered.filter(f => getStage(f) === stage.id).length
+            return (
+              <div key={stage.id} className="flex items-center gap-1.5">
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${stage.bg} ${
+                  stage.id === 'detected' ? 'border-red-200' :
+                  stage.id === 'suggested' ? 'border-amber-200' :
+                  stage.id === 'planned' ? 'border-wash' :
+                  stage.id === 'active' ? 'border-copper/25' : 'border-emerald-200'
+                }`}>
+                  <span className={`text-[11px] font-semibold ${stage.color}`}>{stage.label}</span>
+                  <span className={`text-[11px] font-bold ${stage.color}`}>{count}</span>
+                </div>
+                {i < STAGES.length - 1 && <ArrowRight size={12} className="text-tweed/40 shrink-0" />}
+              </div>
             )
           })}
         </div>
-
-        <div className="card overflow-hidden">
-          {filtered.length === 0 ? (
-            <div className="py-12 text-center">
-              <p className="font-display text-xl font-semibold mb-2" style={{ color: 'var(--petrol)' }}>
-                Aucun finding dans cette catégorie
-              </p>
-              <p className="text-sm" style={{ color: 'var(--tweed)' }}>
-                Lancez une synchronisation GSC ou un snapshot SERP pour générer des findings.
-              </p>
-            </div>
-          ) : (
-            filtered.map(f => (
-              <FindingRow
-                key={f.id}
-                finding={f}
-                onSelect={setSelectedFinding}
-              />
-            ))
-          )}
-        </div>
       </div>
 
-      {selectedFinding && (
-        <FindingPanel
-          finding={selectedFinding}
-          onClose={() => setSelectedFinding(null)}
-        />
-      )}
+      {/* Pipeline board */}
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 overflow-auto p-6">
+          <div className="grid grid-cols-5 gap-3 h-full">
+            {STAGES.map(stage => {
+              const items = filtered.filter(f => getStage(f) === stage.id)
+              return (
+                <div key={stage.id} className="flex flex-col">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div>
+                      <p className={`text-xs font-semibold ${stage.color}`}>{stage.label}</p>
+                      <p className="text-[10px] text-tweed">{stage.sublabel}</p>
+                    </div>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${stage.color} ${stage.bg}`}>
+                      {items.length}
+                    </span>
+                  </div>
+                  <div className={`flex-1 rounded-xl border-t-4 ${stage.border} bg-white/40 border border-line p-2.5 flex flex-col gap-2 overflow-y-auto`}>
+                    {items.length === 0 ? (
+                      <div className="flex-1 flex items-center justify-center">
+                        <span className="text-xs text-tweed/30">—</span>
+                      </div>
+                    ) : (
+                      items.map(f => (
+                        <FindingCard
+                          key={f.id}
+                          finding={f}
+                          onSelect={setSelected}
+                          isSelected={selected?.id === f.id}
+                        />
+                      ))
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {selected && <DetailPanel finding={selected} onClose={() => setSelected(null)} />}
+      </div>
     </div>
   )
 }
