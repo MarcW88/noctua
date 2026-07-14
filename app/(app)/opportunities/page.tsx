@@ -1,190 +1,251 @@
 'use client'
 
-import { useState } from 'react'
-import { Lightbulb, CheckCircle2, XCircle, GitMerge, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react'
-import { mockOpportunities, mockFindings } from '@/lib/mock-data'
-import { severityConfig, initiativeTypeConfig } from '@/lib/utils'
-import type { Opportunity } from '@/lib/types'
+import {
+  Zap, ArrowRight, AlertTriangle, TrendingUp, Target,
+  ChevronRight, User, Clock, Lightbulb
+} from 'lucide-react'
+import Link from 'next/link'
+import { mockInitiatives, mockFindings } from '@/lib/mock-data'
+import { initiativeTypeConfig, severityConfig, categoryConfig } from '@/lib/utils'
+import type { Initiative, Finding } from '@/lib/types'
 
-const opportunityTypeLabels: Record<string, string> = {
-  refresh_content: 'Refresh Content',
-  build_content: 'Build Content',
-  reinforce_authority: 'Reinforce Authority',
-  defend_competitor: 'Defend Competitor',
-  fix_technical: 'Fix Technical',
-  expand_coverage: 'Expand Coverage',
-  strengthen_ai: 'Strengthen AI',
+// ── Portfolio sections ────────────────────────────────────────────────────
+
+const SECTIONS = [
+  {
+    id: 'now',
+    label: 'Now',
+    question: 'Qu\'est-ce qu\'on lance cette semaine ?',
+    color: 'text-copper',
+    bg: 'bg-copper-light',
+    borderTop: 'border-t-copper',
+    borderLeft: 'border-l-2 border-l-copper',
+    icon: Zap,
+  },
+  {
+    id: 'next',
+    label: 'Next',
+    question: 'Qu\'est-ce qu\'on prépare ce trimestre ?',
+    color: 'text-petrol-deep',
+    bg: 'bg-petrol-light',
+    borderTop: 'border-t-petrol',
+    borderLeft: 'border-l-2 border-l-petrol',
+    icon: TrendingUp,
+  },
+  {
+    id: 'bets',
+    label: 'Bets',
+    question: 'Quels chantiers structurants valent l\'investissement ?',
+    color: 'text-purple-700',
+    bg: 'bg-purple-50',
+    borderTop: 'border-t-purple-400',
+    borderLeft: 'border-l-2 border-l-purple-400',
+    icon: Target,
+  },
+  {
+    id: 'risks',
+    label: 'Risks',
+    question: 'Qu\'est-ce qui nous bloque ou nous expose ?',
+    color: 'text-red-700',
+    bg: 'bg-red-50',
+    borderTop: 'border-t-red-400',
+    borderLeft: 'border-l-2 border-l-red-400',
+    icon: AlertTriangle,
+  },
+] as const
+
+type SectionId = typeof SECTIONS[number]['id']
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function getSection(i: Initiative): SectionId {
+  if (i.horizon === 'now') return 'now'
+  if (i.horizon === 'next') return 'next'
+  return 'bets'
 }
 
-const scoreColor = (score: number) => {
-  if (score >= 4) return '#16a34a'
-  if (score >= 3) return 'var(--copper)'
-  return 'var(--tweed)'
+const impactBadge = (score: number) => {
+  if (score >= 5) return { label: 'Impact maximal', cls: 'text-emerald-700 bg-emerald-50 border-emerald-200' }
+  if (score >= 4) return { label: 'Impact fort', cls: 'text-emerald-700 bg-emerald-50 border-emerald-200' }
+  if (score >= 3) return { label: 'Impact modéré', cls: 'text-amber-700 bg-amber-50 border-amber-200' }
+  return { label: 'Impact faible', cls: 'text-tweed bg-paper-deep border-line' }
 }
 
-function ScoreDot({ score, label }: { score: number; label: string }) {
+const effortBadge = (score: number) => {
+  if (score <= 1) return { label: 'Effort minimal', cls: 'text-emerald-700' }
+  if (score <= 2) return { label: 'Effort faible', cls: 'text-emerald-600' }
+  if (score <= 3) return { label: 'Effort moyen', cls: 'text-amber-600' }
+  return { label: 'Effort élevé', cls: 'text-red-600' }
+}
+
+// ── Initiative card ────────────────────────────────────────────────────────
+
+function InitiativeCard({ initiative, borderLeft }: { initiative: Initiative; borderLeft: string }) {
+  const tc = initiativeTypeConfig(initiative.type)
+  const imp = impactBadge(initiative.visibility_impact)
+  const eff = effortBadge(initiative.effort)
+  const isActive = initiative.status === 'in_progress'
+
   return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5].map(i => (
-          <span
-            key={i}
-            className="w-2 h-2 rounded-full"
-            style={{ background: i <= score ? scoreColor(score) : 'var(--line)' }}
-          />
-        ))}
+    <div className={`bg-white rounded-xl border border-line ${borderLeft} p-4 hover:shadow-subtle transition-all group`}>
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${tc.bg} ${tc.color}`}>{tc.label}</span>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${imp.cls}`}>{imp.label}</span>
+          {isActive && (
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-copper">
+              <Clock size={9} /> En cours
+            </span>
+          )}
+        </div>
+        <span className="text-[11px] font-bold text-tweed shrink-0">{initiative.priority_score.toFixed(1)}</span>
       </div>
-      <span className="text-xs" style={{ color: 'var(--tweed)' }}>{label}</span>
+
+      <p className="text-sm font-semibold text-ink leading-snug mb-1.5">{initiative.title}</p>
+      <p className="text-xs text-tweed leading-relaxed line-clamp-2 mb-3">{initiative.why_this_matters}</p>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {initiative.owner && (
+            <span className="flex items-center gap-1 text-[11px] text-tweed">
+              <User size={10} /> {initiative.owner}
+            </span>
+          )}
+          <span className={`text-[11px] font-medium ${eff.cls}`}>{eff.label}</span>
+        </div>
+        <Link href="/roadmap" className="flex items-center gap-1 text-[11px] font-semibold text-petrol opacity-0 group-hover:opacity-100 transition-opacity">
+          Roadmap <ChevronRight size={11} />
+        </Link>
+      </div>
     </div>
   )
 }
 
-function OpportunityCard({ opp }: { opp: Opportunity }) {
-  const [expanded, setExpanded] = useState(false)
-  const relatedFindings = mockFindings.filter(f => opp.finding_ids.includes(f.id))
+// ── Risk card ──────────────────────────────────────────────────────────────
 
-  const statusConfig = {
-    proposed: { label: 'Proposée', color: 'var(--copper)', bg: 'var(--copper-light)' },
-    accepted: { label: 'Acceptée', color: '#16a34a', bg: '#dcfce7' },
-    rejected: { label: 'Rejetée', color: '#dc2626', bg: '#fee2e2' },
-    merged: { label: 'Fusionnée', color: 'var(--petrol)', bg: 'var(--petrol-light)' },
-  }
+function RiskCard({ finding }: { finding: Finding }) {
+  const sev = severityConfig(finding.severity)
+  const cat = categoryConfig(finding.category)
+  return (
+    <div className="bg-white rounded-xl border border-line border-l-2 border-l-red-400 p-4 hover:shadow-subtle transition-all">
+      <div className="flex items-center gap-2 mb-2">
+        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${sev.bg} ${sev.color}`}>{sev.label}</span>
+        <span className="text-[10px] text-tweed">{cat.label}</span>
+        <span className="text-[10px] text-red-600 font-medium ml-auto">Sans initiative planifiée</span>
+      </div>
+      <p className="text-sm font-semibold text-ink leading-snug mb-1">{finding.title}</p>
+      {finding.metric_value !== undefined && (
+        <p className="text-xs font-bold text-red-600">{finding.metric_value > 0 ? '+' : ''}{finding.metric_value} {finding.metric_label}</p>
+      )}
+      <div className="mt-3">
+        <Link href="/findings" className="flex items-center gap-1 text-[11px] font-semibold text-petrol hover:underline">
+          <Lightbulb size={11} /> Créer une initiative <ChevronRight size={11} />
+        </Link>
+      </div>
+    </div>
+  )
+}
 
-  const st = statusConfig[opp.status]
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+export default function InitiativesPage() {
+  const nowItems = mockInitiatives.filter(i => getSection(i) === 'now')
+  const nextItems = mockInitiatives.filter(i => getSection(i) === 'next')
+  const betsItems = mockInitiatives.filter(i => getSection(i) === 'bets')
+  const risks = mockFindings.filter(f =>
+    (f.severity === 'critical' || f.severity === 'high') &&
+    !f.is_dismissed &&
+    !['f10', 'f11', 'f2', 'f9', 'f8', 'f1'].includes(f.id)
+  )
+
+  const sections = [
+    { conf: SECTIONS[0], items: nowItems, type: 'initiative' as const },
+    { conf: SECTIONS[1], items: nextItems, type: 'initiative' as const },
+    { conf: SECTIONS[2], items: betsItems, type: 'initiative' as const },
+    { conf: SECTIONS[3], items: risks, type: 'risk' as const },
+  ]
 
   return (
-    <div className="card overflow-hidden">
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-4 mb-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span
-                className="badge text-xs"
-                style={{ background: 'var(--petrol-light)', color: 'var(--petrol-deep)', border: '1px solid var(--wash)' }}
-              >
-                {opportunityTypeLabels[opp.type] || opp.type}
-              </span>
-              <span
-                className="badge text-xs"
-                style={{ background: st.bg, color: st.color, border: 'none' }}
-              >
-                {st.label}
-              </span>
-            </div>
-            <h3 className="font-display text-lg font-bold leading-snug" style={{ color: 'var(--petrol-deep)' }}>
-              {opp.title}
-            </h3>
+    <div className="flex flex-col h-screen overflow-hidden" style={{ background: 'var(--paper)' }}>
+
+      {/* Header */}
+      <div className="shrink-0 border-b border-line px-8 pt-6 pb-4" style={{ background: 'var(--paper-cream)' }}>
+        <div className="flex items-end justify-between">
+          <div>
+            <p className="text-[11px] font-semibold text-tweed uppercase tracking-widest mb-0.5">Portefeuille de décisions</p>
+            <h1 className="font-display text-2xl font-bold text-ink">Initiatives</h1>
+            <p className="text-xs text-tweed mt-1">
+              {mockInitiatives.length} initiatives · {nowItems.length} à lancer maintenant · {risks.length} risques non adressés
+            </p>
           </div>
-          <div className="flex gap-4 flex-shrink-0">
-            <ScoreDot score={opp.impact_score} label="Impact" />
-            <ScoreDot score={opp.effort_score} label="Effort" />
-            <ScoreDot score={opp.confidence_score} label="Confiance" />
+          <div className="flex gap-2">
+            <Link href="/findings" className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-line bg-white text-xs font-semibold text-tweed hover:text-ink transition-all">
+              Evidence <ArrowRight size={12} />
+            </Link>
+            <Link href="/roadmap" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all" style={{ background: 'var(--ink)', color: 'var(--paper)' }}>
+              Roadmap <ArrowRight size={12} />
+            </Link>
           </div>
         </div>
 
-        <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--tweed)' }}>
-          {opp.description}
-        </p>
+        {/* Section summary strip */}
+        <div className="flex gap-3 mt-4">
+          {sections.map(({ conf, items }) => {
+            const Icon = conf.icon
+            return (
+              <div key={conf.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${conf.bg} ${
+                conf.id === 'now' ? 'border-copper/25' :
+                conf.id === 'next' ? 'border-wash' :
+                conf.id === 'bets' ? 'border-purple-200' : 'border-red-200'
+              }`}>
+                <Icon size={12} className={conf.color} />
+                <span className={`text-[11px] font-semibold ${conf.color}`}>{conf.label}</span>
+                <span className={`text-[11px] font-bold ${conf.color}`}>{items.length}</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1 text-xs font-semibold mb-3"
-          style={{ color: 'var(--petrol)' }}
-        >
-          {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          {relatedFindings.length} finding{relatedFindings.length > 1 ? 's' : ''} associé{relatedFindings.length > 1 ? 's' : ''}
-        </button>
-
-        {expanded && (
-          <div className="space-y-1.5 mb-4">
-            {relatedFindings.map(f => {
-              const sev = severityConfig(f.severity)
-              return (
-                <div key={f.id} className="flex items-center gap-2 px-3 py-2 rounded-lg"
-                  style={{ background: 'var(--paper-deep)', border: '1px solid var(--line)' }}>
-                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sev.dot}`} />
-                  <span className="text-xs font-medium flex-1 line-clamp-1" style={{ color: 'var(--ink)' }}>{f.title}</span>
-                  <span className={`badge text-xs ${sev.bg} ${sev.color}`}>{sev.label}</span>
+      {/* 4-quadrant portfolio */}
+      <div className="flex-1 overflow-auto p-6">
+        <div className="grid grid-cols-2 gap-5 h-full">
+          {sections.map(({ conf, items, type }) => {
+            const Icon = conf.icon
+            return (
+              <div key={conf.id} className="flex flex-col">
+                {/* Section header */}
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <Icon size={14} className={conf.color} />
+                      <h2 className={`text-sm font-bold ${conf.color}`}>{conf.label}</h2>
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${conf.color} ${conf.bg}`}>{items.length}</span>
+                    </div>
+                    <p className="text-xs text-tweed ml-5">{conf.question}</p>
+                  </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
 
-        <div className="flex gap-2">
-          {opp.status === 'proposed' ? (
-            <>
-              <button className="btn-primary text-xs flex-1 justify-center">
-                <CheckCircle2 size={13} />
-                Accepter → Roadmap
-              </button>
-              <button className="btn-secondary text-xs px-3">
-                <GitMerge size={13} />
-                Fusionner
-              </button>
-              <button className="btn-ghost text-xs px-3" style={{ color: '#dc2626' }}>
-                <XCircle size={13} />
-              </button>
-            </>
-          ) : opp.status === 'accepted' ? (
-            <button className="btn-primary text-xs">
-              <ArrowRight size={13} />
-              Voir dans la roadmap
-            </button>
-          ) : null}
+                {/* Cards column */}
+                <div className={`flex-1 rounded-xl border-t-4 ${conf.borderTop} bg-white/30 border border-line p-3 flex flex-col gap-2.5 overflow-y-auto`}>
+                  {items.length === 0 ? (
+                    <div className="flex-1 flex items-center justify-center">
+                      <span className="text-xs text-tweed/30">—</span>
+                    </div>
+                  ) : type === 'initiative' ? (
+                    (items as Initiative[]).map(i => (
+                      <InitiativeCard key={i.id} initiative={i} borderLeft={conf.borderLeft} />
+                    ))
+                  ) : (
+                    (items as Finding[]).map(f => (
+                      <RiskCard key={f.id} finding={f} />
+                    ))
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
-      </div>
-    </div>
-  )
-}
-
-export default function OpportunitiesPage() {
-  const [filter, setFilter] = useState<'all' | 'proposed' | 'accepted'>('all')
-
-  const filtered = mockOpportunities.filter(o =>
-    filter === 'all' ? true : o.status === filter
-  )
-
-  const proposed = mockOpportunities.filter(o => o.status === 'proposed').length
-  const accepted = mockOpportunities.filter(o => o.status === 'accepted').length
-
-  return (
-    <div className="p-8 max-w-[1000px]">
-      <div className="mb-6">
-        <p className="eyebrow mb-1">Consolidation</p>
-        <h1 className="font-display text-3xl font-bold tracking-tight" style={{ color: 'var(--petrol-deep)' }}>
-          Opportunités
-        </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--tweed)' }}>
-          Regroupements de findings en zones d&apos;action. Acceptez pour créer des initiatives dans la roadmap.
-        </p>
-      </div>
-
-      <div className="flex gap-3 mb-6">
-        {[
-          { id: 'all', label: `Toutes (${mockOpportunities.length})` },
-          { id: 'proposed', label: `Proposées (${proposed})` },
-          { id: 'accepted', label: `Acceptées (${accepted})` },
-        ].map(f => (
-          <button
-            key={f.id}
-            onClick={() => setFilter(f.id as typeof filter)}
-            className="px-4 py-1.5 rounded-full text-sm font-medium border transition-colors"
-            style={{
-              background: filter === f.id ? 'var(--petrol)' : 'var(--paper-cream)',
-              color: filter === f.id ? 'var(--paper-cream)' : 'var(--tweed)',
-              borderColor: filter === f.id ? 'var(--petrol)' : 'var(--line)',
-            }}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="space-y-4">
-        {filtered.map(opp => (
-          <OpportunityCard key={opp.id} opp={opp} />
-        ))}
       </div>
     </div>
   )

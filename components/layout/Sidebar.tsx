@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
   AlertCircle,
-  Lightbulb,
+  Zap,
   Map,
   PresentationIcon,
   Settings,
@@ -16,9 +16,9 @@ import {
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/findings', label: 'Findings', icon: AlertCircle, badge: 11 },
-  { href: '/opportunities', label: 'Opportunités', icon: Lightbulb, badge: 6 },
+  { href: '/dashboard', label: 'Command Center', icon: LayoutDashboard },
+  { href: '/findings', label: 'Evidence', icon: AlertCircle, badge: 11 },
+  { href: '/opportunities', label: 'Initiatives', icon: Zap, badge: 9 },
   { href: '/roadmap', label: 'Roadmap', icon: Map },
   { href: '/executive', label: 'Vue Executive', icon: PresentationIcon },
 ]
